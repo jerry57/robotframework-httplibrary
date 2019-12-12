@@ -18,58 +18,21 @@ The script accepts buildout command-line options, so you can
 use the -c option to specify an alternate configuration file.
 """
 
-import os
-import shutil
-import sys
-import tempfile
+import os, shutil, sys, tempfile
+from optparse import OptionParser
+
+tmpeggs = tempfile.mkdtemp()
 
 from optparse import OptionParser
 
-__version__ = '2015-07-01'
-# See zc.buildout's changelog if this version is up to date.
 
-tmpeggs = tempfile.mkdtemp(prefix='bootstrap-')
-
-usage = '''\
-[DESIRED PYTHON FOR BUILDOUT] bootstrap.py [options]
-
-Bootstraps a buildout-based project.
-
-Simply run this script in a directory containing a buildout.cfg, using the
-Python that you want bin/buildout to use.
-
-Note that by using --find-links to point to local resources, you can keep
-this script from going over the network.
-'''
-
-parser = OptionParser(usage=usage)
-parser.add_option("--version",
-                  action="store_true", default=False,
-                  help=("Return bootstrap.py version."))
-parser.add_option("-t", "--accept-buildout-test-releases",
-                  dest='accept_buildout_test_releases',
-                  action="store_true", default=False,
-                  help=("Normally, if you do not specify a --version, the "
-                        "bootstrap script and buildout gets the newest "
-                        "*final* versions of zc.buildout and its recipes and "
-                        "extensions for you.  If you use this flag, "
-                        "bootstrap and buildout will get the newest releases "
-                        "even if they are alphas or betas."))
-parser.add_option("-c", "--config-file",
-                  help=("Specify the path to the buildout configuration "
-                        "file to be used."))
-parser.add_option("-f", "--find-links",
-                  help=("Specify a URL to search for buildout releases"))
-parser.add_option("--allow-site-packages",
-                  action="store_true", default=False,
-                  help=("Let bootstrap.py use existing site packages"))
-parser.add_option("--buildout-version",
-                  help="Use a specific zc.buildout version")
-parser.add_option("--setuptools-version",
-                  help="Use a specific setuptools version")
-parser.add_option("--setuptools-to-dir",
-                  help=("Allow for re-use of existing directory of "
-                        "setuptools versions"))
+# parsing arguments
+parser = OptionParser()
+parser.add_option("-v", "--version", dest="version",
+                          help="use a specific zc.buildout version")
+parser.add_option("-d", "--distribute",
+                   action="store_true", dest="distribute", default=False,
+                   help="Use Disribute rather than Setuptools.")
 
 options, args = parser.parse_args()
 if options.version:
@@ -81,9 +44,27 @@ if options.version:
 # load/install setuptools
 
 try:
-    from urllib.request import urlopen
+    import pkg_resources
+    if not hasattr(pkg_resources, '_distribute'):
+        to_reload = False
+        raise ImportError
 except ImportError:
-    from urllib2 import urlopen
+    ez = {}
+
+    if to_reload:
+        reload(pkg_resources)
+    else:
+        import pkg_resources
+
+if sys.platform == 'win32':
+    def quote(c):
+        if ' ' in c:
+            return '"%s"' % c # work around spawn lamosity on windows
+        else:
+            return c
+else:
+    def quote (c):
+        return c
 
 ez = {}
 if os.path.exists('ez_setup.py'):

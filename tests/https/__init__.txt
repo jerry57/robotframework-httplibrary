@@ -1,6 +1,7 @@
 *** Settings ***
 
 Library         HttpLibrary.HTTP
+Library         Process
 Library         OperatingSystem
 Library         Process
 
